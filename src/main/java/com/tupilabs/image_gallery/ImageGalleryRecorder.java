@@ -24,12 +24,12 @@
 package com.tupilabs.image_gallery;
 
 import hudson.Extension;
-import hudson.FilePath;
 import hudson.Launcher;
 import hudson.model.Action;
 import hudson.model.BuildListener;
 import hudson.model.AbstractBuild;
 import hudson.model.AbstractProject;
+import hudson.model.Descriptor;
 import hudson.tasks.BuildStepDescriptor;
 import hudson.tasks.BuildStepMonitor;
 import hudson.tasks.Publisher;
@@ -38,50 +38,51 @@ import hudson.util.FormValidation;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
-import java.util.Collections;
+import java.util.LinkedList;
 import java.util.List;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import org.apache.commons.lang.StringUtils;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.QueryParameter;
 
+import com.tupilabs.image_gallery.image_gallery.ImageGallery;
+
 /**
- * An image gallery recorder. This recorder is responsible for looking for 
- * image files and storing them in the master node.
+ * An image gallery recorder. 
+ * <p> 
+ * It uses {@link ImageGallery ImageGallery} extension point to create 
+ * galleries for different formats.
  *
  * @author Bruno P. Kinoshita - http://www.kinoshita.eti.br
+ * @see ImageGallery
  * @since 0.1
  */
-@SuppressWarnings("unchecked")
 public class ImageGalleryRecorder extends Recorder {
+	
+	private static Logger LOGGER = Logger.getLogger("com.tupilabs.image_gallery");
 
 	@Extension
 	public static final DescriptorImpl DESCRIPTOR = new DescriptorImpl();
 	
-	private final String includes;
-	private final Integer imageWidth;
+	/**
+	 * List of ImageGallery (an extension point defined in this plug-in).
+	 */
+	private final List<ImageGallery> imageGalleries;
 	
 	
 	@DataBoundConstructor
-	public ImageGalleryRecorder(String includes, Integer imageWidth) {
-		this.includes = includes;
-		this.imageWidth = imageWidth;
+	public ImageGalleryRecorder(List<ImageGallery> imageGalleries) {
+		this.imageGalleries = imageGalleries;
 	}
 	
 	/**
-	 * @return the includes
+	 * @return the imageGalleries
 	 */
-	public String getIncludes() {
-		return includes;
-	}
-	
-	/**
-	 * @return the imageWidth
-	 */
-	public Integer getImageWidth() {
-		return imageWidth;
+	public List<ImageGallery> getImageGalleries() {
+		return imageGalleries;
 	}
 	
 	/*
@@ -97,33 +98,21 @@ public class ImageGalleryRecorder extends Recorder {
 	 * @see hudson.tasks.BuildStepCompatibilityLayer#getProjectActions(hudson.model.AbstractProject)
 	 */
 	@Override
-	public Collection<? extends Action> getProjectActions(
-			AbstractProject<?, ?> project) {
-		if(project.getLastBuild() != null) {
-			try {
-				List<String> images = new ArrayList<String>();
-				FilePath ws = project.getSomeWorkspace();
-				if(ws != null) {
-					FilePath imagesFolder = ws.child("images");
-					List<FilePath> existentImages = imagesFolder.list();
-					if(existentImages != null && existentImages.size() > 0) {
-						for(FilePath image : existentImages) {
-							String imagePath = image.getName();
-							images.add(imagePath);
-						}
-					}
+	public Collection<? extends Action> getProjectActions(AbstractProject<?, ?> project) {
+		Collection<Action> actions = new ArrayList<Action>();
+		if(this.imageGalleries != null) {
+			for(ImageGallery imageGallery : this.imageGalleries) {
+				if(LOGGER.isLoggable(Level.FINE)) {
+					LOGGER.log(Level.FINE, "Add project actions for image gallery: " + imageGallery.getDescriptor().getDisplayName());
 				}
-				ImageGalleryProjectAction action = new ImageGalleryProjectAction(images.toArray(new String[0]), this.imageWidth);
-				return Arrays.asList(action);
-			} catch(InterruptedException ie) {
-				return Collections.emptyList();
+				@SuppressWarnings("unchecked")
+				Collection<Action> imageGalleryActions = (Collection<Action>) imageGallery.getProjectActions(project);
+				for(Action imageGalleryAction : imageGalleryActions) {
+					actions.add(imageGalleryAction);
+				}
 			}
-			catch(IOException ie) {
-				return Collections.emptyList();
-			}
-		} else {
-			return Collections.emptyList();
 		}
+		return actions;
 	}
 	
 	/* (non-Javadoc)
@@ -132,35 +121,29 @@ public class ImageGalleryRecorder extends Recorder {
 	@Override
 	public boolean perform(AbstractBuild<?, ?> build, Launcher launcher,
 			BuildListener listener) throws InterruptedException, IOException {
-		FilePath imagesFolder = build.getWorkspace().child("images");
-		if(!imagesFolder.exists()) {
-			imagesFolder.mkdirs();
-		}
-		for(FilePath existentImage : imagesFolder.list()) {
-			existentImage.delete();
-		}
-		FilePath[] foundFiles = build.getWorkspace().list(includes);
-		if(foundFiles != null && foundFiles.length > 0) {
-			for(FilePath foundFile : foundFiles) {
-				if(foundFile.exists()) {
-					FilePath dst = imagesFolder.child(foundFile.getName());
-					foundFile.copyToWithPermission(dst);
+		listener.getLogger().append("Creating image galleries.");
+		boolean r = true;
+		for(ImageGallery imageGallery : this.imageGalleries) {
+			try {
+				if(LOGGER.isLoggable(Level.FINE)) {
+					LOGGER.log(Level.FINE, "Creating image gallery: " + imageGallery.getDescriptor().getDisplayName());
 				}
+				imageGallery.createImageGallery(build, listener);
+			} catch (IOException ioe) {
+				r = false;
+				ioe.printStackTrace(listener.getLogger());
+			} catch(InterruptedException ie) {
+				r = false;
+				ie.printStackTrace(listener.getLogger());
 			}
 		}
-//		List<FilePath> images = imagesFolder.list();
-//		if(images != null && images.size() > 0) {
-//			for(FilePath image : images) {
-//				String imagePath = image.getName();
-//				this.images.add(imagePath);
-//			}
-//		}
-		return true;
+		return r;
 	}
 	
 	/* (non-Javadoc)
 	 * @see hudson.tasks.Recorder#getDescriptor()
 	 */
+	@SuppressWarnings({ "unchecked", "rawtypes" })
 	@Override
 	public BuildStepDescriptor getDescriptor() {
 		return DESCRIPTOR;
@@ -168,6 +151,9 @@ public class ImageGalleryRecorder extends Recorder {
 	
 	public static class DescriptorImpl extends BuildStepDescriptor<Publisher> {
 
+		// exposed for jelly
+		public final Class<ImageGalleryRecorder> imageGalleryBuildType = ImageGalleryRecorder.class;
+		
 		public DescriptorImpl() {
 			super(ImageGalleryRecorder.class);
 		}
@@ -177,7 +163,7 @@ public class ImageGalleryRecorder extends Recorder {
 		 */
 		@Override
 		public String getDisplayName() {
-			return "Create lightbox image gallery";
+			return "Create image gallery";
 		}
 
 		/* (non-Javadoc)
@@ -185,8 +171,17 @@ public class ImageGalleryRecorder extends Recorder {
 		 */
 		@Override
 		public boolean isApplicable(@SuppressWarnings("rawtypes") Class<? extends AbstractProject> jobType) {
-			return true;
+			return Boolean.TRUE;
 		}
+		
+		// exposed for Jelly
+	    public List<Descriptor<? extends ImageGallery>> getApplicableImageGalleries(AbstractProject<?, ?> p) {
+	    	List<Descriptor<? extends ImageGallery>> list = new LinkedList<Descriptor<? extends ImageGallery>>();
+	    	for(Descriptor<? extends ImageGallery> rs : ImageGallery.all()) {
+	    		list.add(rs);
+	    	}
+	    	return list;
+	    }
 		
 		/*
 		 * --- Validation methods ---

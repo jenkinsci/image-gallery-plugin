@@ -21,67 +21,9 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package com.tupilabs.image_gallery;
-
-import hudson.model.Action;
-
-import java.io.Serializable;
-
 /**
- * A project action with the list of image file names to be displayed.
- *
+ * Top level classes.
  * @author Bruno P. Kinoshita - http://www.kinoshita.eti.br
  * @since 0.1
  */
-public class ImageGalleryProjectAction implements Action, Serializable {
-
-	private static final long serialVersionUID = -7434664955252331878L;
-	
-	private final String[] images;
-	private final int imageWidth;
-	
-	public ImageGalleryProjectAction(String[] images, Integer imageWidth) {
-		this.images = images;
-		if(imageWidth != null) {
-			this.imageWidth = imageWidth;
-		} else {
-			this.imageWidth = 0;
-		}
-	}
-	
-	/**
-	 * @return the images
-	 */
-	public String[] getImages() {
-		return images;
-	}
-	
-	/* (non-Javadoc)
-	 * @see hudson.model.Action#getIconFileName()
-	 */
-	public String getIconFileName() {
-		return null;
-	}
-
-	/* (non-Javadoc)
-	 * @see hudson.model.Action#getDisplayName()
-	 */
-	public String getDisplayName() {
-		return "Gallery";
-	}
-
-	/* (non-Javadoc)
-	 * @see hudson.model.Action#getUrlName()
-	 */
-	public String getUrlName() {
-		return "gallery";
-	}
-
-	/**
-	 * @return the imageWidth
-	 */
-	public int getImageWidth() {
-		return imageWidth;
-	}
-
-}
+package com.tupilabs.image_gallery;

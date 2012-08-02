@@ -1,11 +1,8 @@
 <?jelly escape-by-default='true'?>
 <j:jelly xmlns:j="jelly:core" xmlns:st="jelly:stapler" xmlns:d="jelly:define" xmlns:l="/lib/layout" xmlns:t="/lib/hudson" xmlns:f="/lib/form">
-  <f:entry title="Include pattern" field="includes">
-    <f:textbox checkUrl="'${rootURL}/publisher/ImageGalleryRecorder/checkMandatory?value='+escape(this.value)" />
+  <f:entry title="${%Image Galleries}" help="${rootURL}/../plugin/image-gallery/help-imageGalleries.html">
+    <f:hetero-list name="imageGalleries" targetType="${descriptor.imageGalleryBuildType}"
+      descriptors="${descriptor.getApplicableImageGalleries(it)}" items="${instance.imageGalleries}"
+      addCaption="Add image gallery" hasHeader="true"/>
   </f:entry>
-  <f:advanced>
-    <f:entry title="Image width" field="imageWidth" help="${rootURL}/../plugin/image-gallery/help-imageWidth.html">
-      <f:textbox />
-    </f:entry>
-  </f:advanced>
 </j:jelly>

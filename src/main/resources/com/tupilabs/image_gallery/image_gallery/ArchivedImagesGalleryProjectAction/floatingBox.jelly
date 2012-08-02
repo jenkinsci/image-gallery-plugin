@@ -8,24 +8,24 @@
       jQuery("a.gallery").colorbox({
         inline: false,
         photo: true,
-        close: '<?php echo gettext("close"); ?>',
+        close: 'Close',
         rel: 'gallery'
       });
     });
     </script>
     <link href="${rootURL}/plugin/image-gallery/css/colorbox.css" type="text/css" rel="stylesheet" />
     <link href="${rootURL}/plugin/image-gallery/css/plugin.css" type="text/css" rel="stylesheet" />
-    <h2>Image gallery</h2>
+    <h2>${from.title}</h2>
     <j:forEach items="${from.images}" var="i" varStatus="st">
         <j:choose>
           <j:when test="${from.imageWidth > 0}">
-            <a class='gallery' href="ws/images/${i}" title="${i}">
-              <img src="ws/images/${i}" title="Image ${st.index}" width="${from.imageWidth}" />
+            <a class='gallery' href="${i}" title="${i}">
+              <img src="${i}" title="Image ${st.index}" width="${from.imageWidth}" />
             </a>
           </j:when>
           <j:otherwise>
-            <a class='gallery' href="ws/images/${i}" title="${i}">
-              <img src="ws/images/${i}" title="Image ${st.index}" />
+            <a class='gallery' href="${i}" title="${i}">
+              <img src="${i}" title="Image ${st.index}" />
             </a>
           </j:otherwise>
         </j:choose>
